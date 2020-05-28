@@ -4,8 +4,14 @@ import random
 
 import os
 import errno
+import logging
 
 client = discord.Client()
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 #____________________________________
 #config読み込み
@@ -26,6 +32,9 @@ boss = config['Admin']['AdminID']
 @client.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
+
+    #todo
+    #guildを取得したい
 
 @client.event
 async def on_message(message):
@@ -81,7 +90,7 @@ async def on_message(message):
                     #for i in range(1, dicepref[0] + 1):
                     #    rollline = str(rollline + results[i])
                     del results[0]
-                    await message.channel.send("> " + str(dicepref[0]) + "D" + str(dicepref[1]) + " =\n> " + "".join(results))
+                    await message.channel.send("> " + str(dicepref[0]) + "D" + str(dicepref[1]) + " \n> =" + "".join(results))
 
             #!roll後にスペースが入っている
             elif len(dices[1]) < 3:
@@ -102,15 +111,93 @@ async def on_message(message):
         await message.channel.send(line)
 
     #Partyfinder-------------------------------------------------------------
+    #PT番号
+    PTnum = 0
+    #PT情報保存用リスト
+    #[messageid, authorid, title, desc, ]
+    PTinfo = [[0] * 4] * int(config['Settings']['maxparty'])
+
+
     if message.content.startswith("!PT") or message.content.startswith("!pt"):
 
         # PT募集チャンネル未設定or設定チャンネル上の場合
         if (int(config['Settings']['PTfindchannel']) == 0) or (message.channel.id == int(config['Settings']['PTfindchannel'])):
+            #await message.channel.send("LookingForPT")
 
-            await message.channel.send("LookingForPT")
+            #todo 同時募集PT数制限
+
+            PTnum += 1
+            PTdesc = message.content.split(" ")
+
+            #出力
+            PTfindmsg = await message.channel.send(message.author.mention + "がPT募集中!\n> **__" + str(PTdesc[1]) + "__**\n > " + str(PTdesc[2]))
+            # @author がPT募集中!
+            # <b><u>Title</b></u>
+            # desc~~~
+
+            #Messageidを取得。保存。emoji付け
+            PTfindmsg_id = PTfindmsg.id
+            PTfindmsg_guild = PTfindmsg.guild
+
+
+            #各種emoji
+            pld_em = discord.utils.get(PTfindmsg.guild.emojis, name='PLD')
+            war_em = discord.utils.get(PTfindmsg.guild.emojis, name='WAR')
+            drk_em = discord.utils.get(PTfindmsg.guild.emojis, name='DRK')
+            gnb_em = discord.utils.get(PTfindmsg.guild.emojis, name='GNB')
+
+            drg_em = discord.utils.get(PTfindmsg.guild.emojis, name='DRG')
+            mnk_em = discord.utils.get(PTfindmsg.guild.emojis, name='MNK')
+            nin_em = discord.utils.get(PTfindmsg.guild.emojis, name='NIN')
+            sam_em = discord.utils.get(PTfindmsg.guild.emojis, name='SAM')
+
+            brd_em = discord.utils.get(PTfindmsg.guild.emojis, name='BRD')
+            mch_em = discord.utils.get(PTfindmsg.guild.emojis, name='MCH')
+            dnc_em = discord.utils.get(PTfindmsg.guild.emojis, name='DNC')
+
+            smn_em = discord.utils.get(PTfindmsg.guild.emojis, name='SMN')
+            blm_em = discord.utils.get(PTfindmsg.guild.emojis, name='BLM')
+            rdm_em = discord.utils.get(PTfindmsg.guild.emojis, name='RDM')
+
+            whm_em = discord.utils.get(PTfindmsg.guild.emojis, name='WHM')
+            sch_em = discord.utils.get(PTfindmsg.guild.emojis, name='SCH')
+            ast_em = discord.utils.get(PTfindmsg.guild.emojis, name='AST')
+
+            async for message in PTfindmsg.channel.history(limit=10):
+                if message.id == PTfindmsg_id:
+                    await message.add_reaction(pld_em)
+                    await message.add_reaction(war_em)
+                    await message.add_reaction(drk_em)
+                    await message.add_reaction(gnb_em)
+
+                    await message.add_reaction(drg_em)
+                    await message.add_reaction(mnk_em)
+                    await message.add_reaction(nin_em)
+                    await message.add_reaction(sam_em)
+
+                    await message.add_reaction(brd_em)
+                    await message.add_reaction(mch_em)
+                    await message.add_reaction(dnc_em)
+
+                    await message.add_reaction(smn_em)
+                    await message.add_reaction(blm_em)
+                    await message.add_reaction(rdm_em)
+
+                    await message.add_reaction(whm_em)
+                    await message.add_reaction(sch_em)
+                    await message.add_reaction(ast_em)
+            #emojiを付けたユーザーを保存、リアクション削除、かぶり検知
+            #揃ったらメンションでｼｬｷｰﾝ
 
         # 設定されたPT募集チャンネルに送信
         else:
             await message.channel.send("PT募集用チャンネルを使ってください")
+
+    #Partyfinder, emoji付け
+
+    #emoji 検索
+    #job_emoji = discord.utils.get(guild.emojis, name='BLM')
+    #if job_emoji:
+    #    await message.add_reaction(job_emoji)
 
 client.run(str(config['bot']['BotToken']))
