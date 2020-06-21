@@ -175,9 +175,23 @@ async def on_message(message):
 
 
             PTdesc = message.content.split(" ")
+            PTfind_txt = message.author.mention + "がPT募集中!\n> **__" + str(PTdesc[1]) + "__**\n > " + str(PTdesc[2])
 
-            #出力
-            PTfindmsg = await message.channel.send(message.author.mention + "がPT募集中!\n> **__" + str(PTdesc[1]) + "__**\n > " + str(PTdesc[2]))
+            #PTinfo = [messageid, author, title, desc, is4ppl, allowdupe] * maxparty
+            if "4" in PTdesc[0]:
+                PTinfo[PTnum] = [0, message.author, PTdesc[1], PTdesc[2], True, False]
+                PTfind_txt += "\nLight Party"
+            else:
+                PTinfo[PTnum] = [0, message.author, PTdesc[1], PTdesc[2], False, False]
+                PTfind_txt += "\nFull Party"
+
+            #かぶり禁止
+            if ("k" or "K") in PTdesc[0]:
+                PTinfo[PTnum][5] = True
+                PTfind_txt += "：被りナシ"
+
+            #募集分を組み立て、出力
+            PTfindmsg = await message.channel.send(PTfind_txt)
             # @author がPT募集中!
             # <b><u>Title</b></u>
             # desc~~~
@@ -186,16 +200,9 @@ async def on_message(message):
             PTfindmsg_id = PTfindmsg.id
             PTfindmsg_guild = PTfindmsg.guild
 
-            #PTinfo = [messageid, author, title, desc, is4ppl, allowdupe] * maxparty
-            if "4" in PTdesc[0]:
-                PTinfo[PTnum] = [PTfindmsg_id, message.author, PTdesc[1], PTdesc[2], True, False]
-            else:
-                PTinfo[PTnum] = [PTfindmsg_id, message.author, PTdesc[1], PTdesc[2], False, False]
 
-            #かぶり禁止
-            if ("k" or "K") in PTdesc[0]:
-                PTinfo[PTnum][5] = True
 
+            PTinfo[PTnum][0] = PTfindmsg_id
             PTmember[PTnum] = [0] * 8
             PTrole[PTnum] = [0] * 3
 
