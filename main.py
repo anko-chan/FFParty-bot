@@ -33,7 +33,7 @@ boss = config['Admin']['AdminID']
 
 #PT情報保存用リスト
 #PTinfo = [messageid, author, title, desc, is4ppl, allowdupe] * maxparty
-PTinfo = [[0] * 4] * int(config['Settings']['maxparty'])
+PTinfo = [[0] * 6] * int(config['Settings']['maxparty'])
 PTmember = [[0] * 8] * int(config['Settings']['maxparty'])
 PTrole = [[0] * 3] * int(config['Settings']['maxparty'])
 #______________________________________
@@ -170,9 +170,15 @@ async def on_message(message):
 
         # PT募集チャンネル未設定or設定チャンネル上の場合
         if (int(config['Settings']['PTfindchannel']) == 0) or (message.channel.id == int(config['Settings']['PTfindchannel'])):
-            #await message.channel.send("LookingForPT")
 
-
+            #すでに募集を立てていたらor空き募集があればreturn
+            for i in range(len(PTinfo)):
+                if message.author == PTinfo[i][1]:
+                    return
+            if PTinfo[PTnum][0] != 0:
+                warn = await message.channel.send(message.author.mention + " 募集件数上限により、今は新しく募集はできません。")
+                await warn.delete(delay=3)
+                return
 
             PTdesc = message.content.split(" ")
             PTfind_txt = message.author.mention + "がPT募集中!\n> **__" + str(PTdesc[1]) + "__**\n > " + str(PTdesc[2])
@@ -199,8 +205,6 @@ async def on_message(message):
             #Messageidを取得。保存。PTmemberとPTrole初期化
             PTfindmsg_id = PTfindmsg.id
             PTfindmsg_guild = PTfindmsg.guild
-
-
 
             PTinfo[PTnum][0] = PTfindmsg_id
             PTmember[PTnum] = [0] * 8
@@ -265,10 +269,6 @@ async def on_reaction_add(reaction, user):
                     return
                 """
 
-                #reactionした人のidをPTmemberに追加
-                PTmember[i][PTrole[i][0] + PTrole[i][1] + PTrole[i][2]] = user
-                print("user stored to party list")
-
                 jobemotelist = getjobemotes(inv_msg)
 
                 #タンク数管理
@@ -313,6 +313,11 @@ async def on_reaction_add(reaction, user):
                                 or str(rc) == str(jobemotelist[3])):
                                 await rc.clear()
 
+                        #reactionを消せてなくてオーバーしてしまったときはreacction調整だけして処理を中断
+                        if (PTinfo[i][4] == True and PTrole[i][0] > 1) or PTrole[i][0] > 2:
+                            await reaction.clear()
+                            PTrole[i][0] -= 1
+                            return
 
                 #dpsが規定数参加していたらemote削除
                 #全部ひとまとめだと消しきれないことがあったので分散させてみる
@@ -331,6 +336,11 @@ async def on_reaction_add(reaction, user):
                             or str(rc) == str(jobemotelist[13])):
                             await rc.clear()
 
+                    if (PTinfo[i][4] == True and PTrole[i][1] > 2) or PTrole[i][1] > 4:
+                        await reaction.clear()
+                        PTrole[i][1] -= 1
+                        return
+
                 #ヒーラーが規定数以上参加していた場合削除
                 if (PTinfo[i][4] == True and PTrole[i][2] > 0) or PTrole[i][2] > 1:
                     for rc in inv_msg.reactions:
@@ -339,11 +349,20 @@ async def on_reaction_add(reaction, user):
                             or str(rc) == str(jobemotelist[16])):
                             await rc.clear()
 
+                    if (PTinfo[i][4] == True and PTrole[i][2] > 1) or PTrole[i][2] > 2:
+                        await reaction.clear()
+                        PTrole[i][2] -= 1
+                        return
+
                 print("emote added, tank, dps, and healer adjusted")
 
                 #かぶり禁止の場合押されたemoteを削除
                 if PTinfo[i][5] == True:
                     await reaction.clear()
+
+                #reactionした人のidをPTmemberに追加
+                PTmember[i][PTrole[i][0] + PTrole[i][1] + PTrole[i][2] - 1] = user
+                print("user stored to party list")
 
                 #8人揃った処理
                 if PTrole[i][0] + PTrole[i][1] + PTrole[i][2] > 7:
@@ -358,7 +377,8 @@ async def on_reaction_add(reaction, user):
                                                         PTmember[i][6].mention + " " +
                                                         user.mention)
 
-                    #募集メッセージ削除
+                    #募集メッセージ削除、PTinfoをクリア
+                    PTinfo[i] = [0] * 6
                     await inv_msg.delete(delay=3)
 
                 elif PTinfo[i][4] == True and PTrole[i][0] + PTrole[i][1] + PTrole[i][2] > 3:
@@ -368,6 +388,8 @@ async def on_reaction_add(reaction, user):
                                                         PTmember[i][1].mention + " " +
                                                         PTmember[i][2].mention + " " +
                                                         user.mention)
+
+                    PTinfo[i] = [0] * 6
                     await inv_msg.delete(delay=3)
 
 
