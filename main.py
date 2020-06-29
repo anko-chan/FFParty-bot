@@ -32,7 +32,7 @@ boss = config['Admin']['AdminID']
 
 
 #PT情報保存用リスト
-#PTinfo = [messageid, author, title, desc, is4ppl, allowdupe] * maxparty
+#PTinfo = [message, author, title, desc, is4ppl, allowdupe] * maxparty
 PTinfo = [[0] * 6] * int(config['Settings']['maxparty'])
 PTmember = [[0] * 8] * int(config['Settings']['maxparty'])
 PTrole = [[0] * 3] * int(config['Settings']['maxparty'])
@@ -161,6 +161,7 @@ async def on_message(message):
                                                 + str(PTmember[i][5]) + ", "
                                                 + str(PTmember[i][6]) + ", "
                                                 + str(PTmember[i][7]))
+
                 return
 
             else:
@@ -174,6 +175,7 @@ async def on_message(message):
             #すでに募集を立てていたらor空き募集があればreturn
             for i in range(len(PTinfo)):
                 if message.author == PTinfo[i][1]:
+                    await message.channel.send(message.author.mention + " すでにPT募集中です。")
                     return
             if PTinfo[PTnum][0] != 0:
                 warn = await message.channel.send(message.author.mention + " 募集件数上限により、今は新しく募集はできません。")
@@ -183,13 +185,15 @@ async def on_message(message):
             PTdesc = message.content.split(" ")
             PTfind_txt = message.author.mention + "がPT募集中!\n> **__" + str(PTdesc[1]) + "__**\n > " + str(PTdesc[2])
 
-            #PTinfo = [messageid, author, title, desc, is4ppl, allowdupe] * maxparty
+            #PTinfo = [message, author, title, desc, is4ppl, allowdupe] * maxparty
             if "4" in PTdesc[0]:
                 PTinfo[PTnum] = [0, message.author, PTdesc[1], PTdesc[2], True, False]
                 PTfind_txt += "\nLight Party"
+                PTmember[PTnum] = [0] * 4
             else:
                 PTinfo[PTnum] = [0, message.author, PTdesc[1], PTdesc[2], False, False]
                 PTfind_txt += "\nFull Party"
+                PTmember[PTnum] = [0] * 8
 
             #かぶり禁止
             if ("k" or "K") in PTdesc[0]:
@@ -206,8 +210,7 @@ async def on_message(message):
             PTfindmsg_id = PTfindmsg.id
             PTfindmsg_guild = PTfindmsg.guild
 
-            PTinfo[PTnum][0] = PTfindmsg_id
-            PTmember[PTnum] = [0] * 8
+            PTinfo[PTnum][0] = PTfindmsg
             PTrole[PTnum] = [0] * 3
 
             print("PTnum:" + str(PTnum) + " msgid:" + str(PTfindmsg_id) + " Author:" + str(PTfindmsg.author) + " Title:" + str(PTdesc[1]) + " desc:" + str(PTdesc[2]))
@@ -233,8 +236,33 @@ async def on_message(message):
         # 設定されたPT募集チャンネルに送信
         else:
             await message.channel.send("PT募集用チャンネルを使ってください")
+            await message.delete(delay=3)
 
 
+    #強制出発用--------------------------------------------------------------------
+    if message.content.startswith("!GO") or message.content.startswith("!go"):
+        if (int(config['Settings']['PTfindchannel']) == 0) or (message.channel.id == int(config['Settings']['PTfindchannel'])):
+            for i in range(len(PTinfo)):
+                if message.author == PTinfo[i][1]:
+                    depart_msg = "Full Party! \n" + "**__" + str(PTinfo[i][2]) + "__**\n"
+                    for member in PTmember[i]:
+                        if member != 0:
+                            depart_msg += member.mention + " "
+
+                    await message.channel.send(depart_msg)
+
+                    #募集メッセージ削除、PTinfoをクリア
+                    await PTinfo[i][0].delete(delay=3)
+                    await message.delete(delay=3)
+                    PTinfo[i] = [0] * 6
+                    return
+
+                msg_out = await message.channel.send("あなたが募集中のPTはありません")
+                await msg_out.delete(delay=3)
+                await message.delete(delay=3)
+                return
+
+    #-------------------------------------------------------------------------------------
 
 
 @client.event
@@ -258,7 +286,7 @@ async def on_reaction_add(reaction, user):
 
         for i in range(int(config['Settings']['maxparty'])):
             #print(str(i) + "：" + str(inv_msg.id) + "：" + str(PTinfo[i][0]))
-            if inv_msg.id == PTinfo[i][0]:
+            if inv_msg.id == PTinfo[i][0].id:
 
                 """
                 #reactionした人がすでにPTにいる場合
@@ -391,6 +419,8 @@ async def on_reaction_add(reaction, user):
 
                     PTinfo[i] = [0] * 6
                     await inv_msg.delete(delay=3)
+
+
 
 
 #msgを渡して、鯖からエモートを取得しリスト化
